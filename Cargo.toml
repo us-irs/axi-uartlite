@@ -1,0 +1,28 @@
+[package]
+name = "axi-uartlite"
+version = "0.1.0"
+description = "LogiCORE AXI UART Lite v2.0 driver"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+derive-mmio = { git = "https://github.com/knurling-rs/derive-mmio.git", rev = "0806ce10b132ca15c6d9122a2d15a6e146b01520"}
+bitbybit = "1.3"
+arbitrary-int = "1.3"
+nb = "1"
+embedded-hal-nb = "1"
+embedded-io = "0.6"
+embedded-io-async = "0.6"
+critical-section = "1"
+thiserror = { version = "2", default-features = false }
+embassy-sync = "0.6"
+raw-slice = { git = "https://egit.irs.uni-stuttgart.de/rust/raw-slice.git" }
+
+[features]
+default = ["1-waker"]
+1-waker = []
+2-wakers = []
+4-wakers = []
+8-wakers = []
+16-wakers = []
+32-wakers = []
