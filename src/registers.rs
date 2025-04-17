@@ -44,12 +44,10 @@ pub struct Control {
 #[derive(derive_mmio::Mmio)]
 #[repr(C)]
 pub struct AxiUartlite {
-    #[mmio(RO)]
+    #[mmio(PureRead)]
     rx_fifo: RxFifo,
     tx_fifo: TxFifo,
-    #[mmio(RO)]
+    #[mmio(PureRead)]
     stat_reg: Status,
     ctrl_reg: Control,
 }
-
-unsafe impl Send for MmioAxiUartlite<'static> {}
