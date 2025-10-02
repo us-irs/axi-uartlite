@@ -218,4 +218,9 @@ impl embedded_io_async::Write for TxAsync {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         Ok(self.write(buf).await)
     }
+
+    /// This implementation does not do anything.
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
