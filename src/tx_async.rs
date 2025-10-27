@@ -173,7 +173,16 @@ impl Future for TxFuture {
 }
 
 impl Drop for TxFuture {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        if !TX_DONE[self.waker_idx].load(core::sync::atomic::Ordering::Relaxed) {
+            critical_section::with(|cs| {
+                let context_ref = TX_CONTEXTS[self.waker_idx].borrow(cs);
+                let mut context_mut = context_ref.borrow_mut();
+                context_mut.slice.set_null();
+                context_mut.progress = 0;
+            });
+        }
+    }
 }
 
 pub struct TxAsync {

@@ -1,6 +1,6 @@
 use core::convert::Infallible;
 
-use crate::registers::{self, AxiUartlite, Status};
+use crate::registers::{self, Registers, Status};
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct RxErrors {
@@ -36,7 +36,7 @@ impl RxErrors {
 }
 
 pub struct Rx {
-    pub(crate) regs: registers::MmioAxiUartlite<'static>,
+    pub(crate) regs: registers::MmioRegisters<'static>,
     pub(crate) errors: Option<RxErrors>,
 }
 
@@ -57,7 +57,7 @@ impl Rx {
     #[inline]
     pub const unsafe fn steal(base_addr: usize) -> Self {
         Self {
-            regs: unsafe { AxiUartlite::new_mmio_at(base_addr) },
+            regs: unsafe { Registers::new_mmio_at(base_addr) },
             errors: None,
         }
     }
