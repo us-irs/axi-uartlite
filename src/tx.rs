@@ -6,7 +6,7 @@ use crate::{
 };
 
 pub struct Tx {
-    pub(crate) regs: registers::MmioAxiUartlite<'static>,
+    pub(crate) regs: registers::MmioRegisters<'static>,
     pub(crate) errors: Option<RxErrors>,
 }
 
@@ -25,7 +25,7 @@ impl Tx {
     ///
     /// The same safey rules specified in [super::AxiUartlite] apply.
     pub unsafe fn steal(base_addr: usize) -> Self {
-        let regs = unsafe { registers::AxiUartlite::new_mmio_at(base_addr) };
+        let regs = unsafe { registers::Registers::new_mmio_at(base_addr) };
         Self { regs, errors: None }
     }
 

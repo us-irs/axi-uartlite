@@ -26,3 +26,6 @@ default = ["1-waker"]
 8-wakers = []
 16-wakers = []
 32-wakers = []
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--generate-link-to-definition"]

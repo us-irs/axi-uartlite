@@ -41,9 +41,10 @@ pub struct Control {
     reset_tx_fifo: bool,
 }
 
+/// AXI UARTLITE register block definition.
 #[derive(derive_mmio::Mmio)]
 #[repr(C)]
-pub struct AxiUartlite {
+pub struct Registers {
     #[mmio(PureRead)]
     rx_fifo: RxFifo,
     tx_fifo: TxFifo,

@@ -14,6 +14,7 @@
 //! - `16-wakers`
 //! - `32-wakers`
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 use core::convert::Infallible;
 use registers::Control;
@@ -82,7 +83,7 @@ impl AxiUartlite {
     ///   with the same `base_addr` can lead to unintended behavior if not externally synchronized.
     /// - The driver performs **volatile** reads and writes to the provided address.
     pub const unsafe fn new(base_addr: u32) -> Self {
-        let regs = unsafe { registers::AxiUartlite::new_mmio_at(base_addr as usize) };
+        let regs = unsafe { registers::Registers::new_mmio_at(base_addr as usize) };
         Self {
             rx: Rx {
                 regs: unsafe { regs.clone() },
@@ -94,7 +95,7 @@ impl AxiUartlite {
     }
 
     #[inline(always)]
-    pub const fn regs(&mut self) -> &mut registers::MmioAxiUartlite<'static> {
+    pub const fn regs(&mut self) -> &mut registers::MmioRegisters<'static> {
         &mut self.tx.regs
     }
 
