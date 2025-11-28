@@ -1,7 +1,9 @@
+//! # Receiver (RX) support module
 use core::convert::Infallible;
 
 use crate::registers::{self, Registers, Status};
 
+/// RX error structure which tracks if an error has occurred.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct RxErrors {
     parity: bool,
@@ -10,6 +12,7 @@ pub struct RxErrors {
 }
 
 impl RxErrors {
+    /// Create a new empty RX error structure.
     pub const fn new() -> Self {
         Self {
             parity: false,
@@ -18,23 +21,31 @@ impl RxErrors {
         }
     }
 
+    /// Parity error occurred.
     pub const fn parity(&self) -> bool {
         self.parity
     }
 
+    /// Frame error occurred.
     pub const fn frame(&self) -> bool {
         self.frame
     }
 
+    /// Overrun error occurred.
     pub const fn overrun(&self) -> bool {
         self.overrun
     }
 
+    /// Any error has occurred.
     pub const fn has_errors(&self) -> bool {
         self.parity || self.frame || self.overrun
     }
 }
 
+/// AXI UARTLITE TX driver.
+///
+/// Can be created by [super::AxiUartlite::split]ting a regular AXI UARTLITE structure or
+/// by [Self::steal]ing it unsafely.
 pub struct Rx {
     pub(crate) regs: registers::MmioRegisters<'static>,
     pub(crate) errors: Option<RxErrors>,
@@ -62,6 +73,10 @@ impl Rx {
         }
     }
 
+    /// Read the RX FIFO.
+    ///
+    /// This functions offers a [nb::Result] based API and returns [nb::Error::WouldBlock] if there
+    /// is nothing to read.
     #[inline]
     pub fn read_fifo(&mut self) -> nb::Result<u8, Infallible> {
         let status_reg = self.regs.read_stat_reg();
@@ -75,14 +90,15 @@ impl Rx {
         Ok(val)
     }
 
+    /// Read from the FIFO without checking the FIFO fill status.
     #[inline(always)]
     pub fn read_fifo_unchecked(&mut self) -> u8 {
         self.regs.read_rx_fifo().data()
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// Does the RX FIFO have valid data?
     #[inline(always)]
-    pub fn has_data(&mut self) -> bool {
+    pub fn has_data(&self) -> bool {
         self.regs.read_stat_reg().rx_fifo_valid_data()
     }
 
@@ -112,6 +128,9 @@ impl Rx {
         self.read_whole_fifo(buf)
     }
 
+    /// Read and clear the last RX errors.
+    ///
+    /// Returns [None] if no errors have occured.
     pub fn read_and_clear_last_error(&mut self) -> Option<RxErrors> {
         let errors = self.errors?;
         self.errors = None;
@@ -154,6 +173,7 @@ impl embedded_io::Read for Rx {
     }
 }
 
+/// Extract RX errors from the status register.
 pub const fn handle_status_reg_errors(status_reg: &Status) -> Option<RxErrors> {
     let mut errors = RxErrors::new();
     if status_reg.frame_error() {
