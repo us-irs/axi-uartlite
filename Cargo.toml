@@ -1,10 +1,12 @@
 [package]
 name = "axi-uartlite"
-version = "0.1.0"
+version = "0.1.1"
 description = "LogiCORE AXI UART Lite v2.0 driver"
 author = ["Robin Mueller <muellerr@irs.uni-stuttgart.de>"]
 rust-version = "1.85.1"
 edition = "2024"
+homepage = "https://egit.irs.uni-stuttgart.de/rust/axi-uartlite"
+repository = "https://egit.irs.uni-stuttgart.de/rust/axi-uartlite"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
