@@ -3,6 +3,7 @@ name = "axi-uartlite"
 version = "0.1.0"
 description = "LogiCORE AXI UART Lite v2.0 driver"
 author = ["Robin Mueller <muellerr@irs.uni-stuttgart.de>"]
+rust-version = "1.85.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 

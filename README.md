@@ -1,11 +1,12 @@
 AXI UARTLITE driver
 ========
 
-This is a native Rust driver for the AMD AXI UART Lite v2.0 IP core.
+This is a native Rust driver for the
+[AMD AXI UART Lite v2.0 IP core](https://www.amd.com/en/products/adaptive-socs-and-fpgas/intellectual-property/axi_uartlite.html).
 
 # Core features
 
-- Basic driver which can be created with a given IP core base address and supports as basic
+- Basic driver which can be created with a given IP core base address and supports a basic
   byte-level read and write API.
 - Support for [`embedded-io`](https://docs.rs/embedded-io/latest/embedded_io/) and
   [`embedded-io-async`](https://docs.rs/embedded-io-async/latest/embedded_io_async/)
