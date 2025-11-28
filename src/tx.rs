@@ -1,3 +1,4 @@
+//! # Transmitter (TX) support module
 use core::convert::Infallible;
 
 use crate::{
@@ -5,6 +6,10 @@ use crate::{
     registers::{self, Control, TxFifo},
 };
 
+/// AXI UARTLITE TX driver.
+///
+/// Can be created by [super::AxiUartlite::split]ting a regular AXI UARTLITE structure or
+/// by [Self::steal]ing it unsafely.
 pub struct Tx {
     pub(crate) regs: registers::MmioRegisters<'static>,
     pub(crate) errors: Option<RxErrors>,
@@ -45,6 +50,7 @@ impl Tx {
         Ok(())
     }
 
+    /// Reset the TX FIFO.
     #[inline]
     pub fn reset_fifo(&mut self) {
         let status = self.regs.read_stat_reg();
@@ -66,15 +72,15 @@ impl Tx {
             .write_tx_fifo(TxFifo::new_with_raw_value(data as u32));
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// Is the TX FIFO empty?
     #[inline(always)]
-    pub fn fifo_empty(&mut self) -> bool {
+    pub fn fifo_empty(&self) -> bool {
         self.regs.read_stat_reg().tx_fifo_empty()
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// Is the TX FIFO full?
     #[inline(always)]
-    pub fn fifo_full(&mut self) -> bool {
+    pub fn fifo_full(&self) -> bool {
         self.regs.read_stat_reg().tx_fifo_full()
     }
 
@@ -93,6 +99,7 @@ impl Tx {
         written
     }
 
+    /// Read and clear the last recorded RX errors.
     pub fn read_and_clear_last_error(&mut self) -> Option<RxErrors> {
         let errors = self.errors?;
         self.errors = None;

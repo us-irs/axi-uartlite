@@ -23,16 +23,22 @@ use raw_slice::RawBufSlice;
 
 use crate::{FIFO_DEPTH, Tx};
 
+/// 1 waker (default).
 #[cfg(feature = "1-waker")]
 pub const NUM_WAKERS: usize = 1;
+/// 2 wakers
 #[cfg(feature = "2-wakers")]
 pub const NUM_WAKERS: usize = 2;
+/// 4 wakers
 #[cfg(feature = "4-wakers")]
 pub const NUM_WAKERS: usize = 4;
+/// 8 wakers
 #[cfg(feature = "8-wakers")]
 pub const NUM_WAKERS: usize = 8;
+/// 16 wakers
 #[cfg(feature = "16-wakers")]
 pub const NUM_WAKERS: usize = 16;
+/// 32 wakers
 #[cfg(feature = "32-wakers")]
 pub const NUM_WAKERS: usize = 32;
 static UART_TX_WAKERS: [AtomicWaker; NUM_WAKERS] = [const { AtomicWaker::new() }; NUM_WAKERS];
@@ -42,6 +48,7 @@ static TX_CONTEXTS: [Mutex<RefCell<TxContext>>; NUM_WAKERS] =
 // critical section.
 static TX_DONE: [AtomicBool; NUM_WAKERS] = [const { AtomicBool::new(false) }; NUM_WAKERS];
 
+/// Invalid waker index for [NUM_WAKERS].
 #[derive(Debug, thiserror::Error)]
 #[error("invalid waker slot index: {0}")]
 pub struct InvalidWakerIndex(pub usize);
@@ -50,8 +57,9 @@ pub struct InvalidWakerIndex(pub usize);
 /// UART peripheral.
 ///
 /// The user has to call this once in the interrupt handler responsible if the interrupt was
-/// triggered by the UARTLite. The relevant [Tx] handle of the UARTLite and the waker slot used
-/// for it must be passed as well. [Tx::steal] can be used to create the required handle.
+/// triggered by the UARTLite using [TxAsync]. The relevant [Tx] handle of the UARTLite and the
+/// waker slot used for it must be passed as well. [Tx::steal] can be used to create the required
+/// handle.
 pub fn on_interrupt_tx(uartlite_tx: &mut Tx, waker_slot: usize) {
     if waker_slot >= NUM_WAKERS {
         return;
@@ -100,6 +108,7 @@ pub fn on_interrupt_tx(uartlite_tx: &mut Tx, waker_slot: usize) {
     });
 }
 
+/// TX context structure.
 #[derive(Debug, Copy, Clone)]
 pub struct TxContext {
     progress: usize,
@@ -108,6 +117,7 @@ pub struct TxContext {
 
 #[allow(clippy::new_without_default)]
 impl TxContext {
+    /// Create a new TX context structure.
     pub const fn new() -> Self {
         Self {
             progress: 0,
@@ -116,11 +126,13 @@ impl TxContext {
     }
 }
 
-pub struct TxFuture {
+/// TX future structure.
+pub struct TxFuture<'tx> {
     waker_idx: usize,
+    tx: &'tx mut TxAsync,
 }
 
-impl TxFuture {
+impl<'tx> TxFuture<'tx> {
     /// Create a new TX future which can be used for asynchronous TX operations.
     ///
     /// # Safety
@@ -128,17 +140,17 @@ impl TxFuture {
     /// This function stores the raw pointer of the passed data slice. The user MUST ensure
     /// that the slice outlives the data structure.
     pub unsafe fn new(
-        tx: &mut Tx,
+        tx: &'tx mut TxAsync,
         waker_idx: usize,
         data: &[u8],
-    ) -> Result<Self, InvalidWakerIndex> {
+    ) -> Result<TxFuture<'tx>, InvalidWakerIndex> {
         TX_DONE[waker_idx].store(false, core::sync::atomic::Ordering::Relaxed);
-        tx.reset_fifo();
+        tx.tx.reset_fifo();
 
         let init_fill_count = core::cmp::min(data.len(), FIFO_DEPTH);
         // We fill the FIFO with initial data.
         for data in data.iter().take(init_fill_count) {
-            tx.write_fifo_unchecked(*data);
+            tx.tx.write_fifo_unchecked(*data);
         }
         critical_section::with(|cs| {
             let context_ref = TX_CONTEXTS[waker_idx].borrow(cs);
@@ -148,11 +160,11 @@ impl TxFuture {
             }
             context.progress = init_fill_count;
         });
-        Ok(Self { waker_idx })
+        Ok(Self { waker_idx, tx })
     }
 }
 
-impl Future for TxFuture {
+impl Future for TxFuture<'_> {
     type Output = usize;
 
     fn poll(
@@ -172,7 +184,7 @@ impl Future for TxFuture {
     }
 }
 
-impl Drop for TxFuture {
+impl Drop for TxFuture<'_> {
     fn drop(&mut self) {
         if !TX_DONE[self.waker_idx].load(core::sync::atomic::Ordering::Relaxed) {
             critical_section::with(|cs| {
@@ -180,17 +192,21 @@ impl Drop for TxFuture {
                 let mut context_mut = context_ref.borrow_mut();
                 context_mut.slice.set_null();
                 context_mut.progress = 0;
+                // We can not disable interrupts, might be active for RX as well.
+                self.tx.tx.reset_fifo();
             });
         }
     }
 }
 
+/// Asynchronous TX structure.
 pub struct TxAsync {
-    tx: Tx,
+    pub(crate) tx: Tx,
     waker_idx: usize,
 }
 
 impl TxAsync {
+    /// Create a new asynchronous TX structure.
     pub fn new(tx: Tx, waker_idx: usize) -> Result<Self, InvalidWakerIndex> {
         if waker_idx >= NUM_WAKERS {
             return Err(InvalidWakerIndex(waker_idx));
@@ -206,10 +222,11 @@ impl TxAsync {
         if buf.is_empty() {
             return 0;
         }
-        let fut = unsafe { TxFuture::new(&mut self.tx, self.waker_idx, buf).unwrap() };
+        let fut = unsafe { TxFuture::new(self, self.waker_idx, buf).unwrap() };
         fut.await
     }
 
+    /// Release the owned TX structure.
     pub fn release(self) -> Tx {
         self.tx
     }

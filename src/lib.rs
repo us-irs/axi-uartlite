@@ -15,6 +15,7 @@
 //! - `32-wakers`
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![deny(missing_docs)]
 
 use core::convert::Infallible;
 use registers::Control;
@@ -29,8 +30,10 @@ pub use rx::*;
 pub mod tx_async;
 pub use tx_async::*;
 
+/// Maximum FIFO depth of the AXI UART Lite.
 pub const FIFO_DEPTH: usize = 16;
 
+/// RX error structure.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct RxErrorsCounted {
     parity: u8,
@@ -39,6 +42,7 @@ pub struct RxErrorsCounted {
 }
 
 impl RxErrorsCounted {
+    /// Create a new empty RX error counter.
     pub const fn new() -> Self {
         Self {
             parity: 0,
@@ -47,23 +51,28 @@ impl RxErrorsCounted {
         }
     }
 
+    /// Parity error count.
     pub const fn parity(&self) -> u8 {
         self.parity
     }
 
+    /// Frame error count.
     pub const fn frame(&self) -> u8 {
         self.frame
     }
 
+    /// Overrun error count.
     pub const fn overrun(&self) -> u8 {
         self.overrun
     }
 
+    /// Some error has occurred.
     pub fn has_errors(&self) -> bool {
         self.parity > 0 || self.frame > 0 || self.overrun > 0
     }
 }
 
+/// AXI UART Lite peripheral driver.
 pub struct AxiUartlite {
     rx: Rx,
     tx: Tx,
@@ -94,6 +103,7 @@ impl AxiUartlite {
         }
     }
 
+    /// Direct register access.
     #[inline(always)]
     pub const fn regs(&mut self) -> &mut registers::MmioRegisters<'static> {
         &mut self.tx.regs
@@ -119,35 +129,39 @@ impl AxiUartlite {
         self.tx.write_fifo_unchecked(data);
     }
 
+    /// Read from the UART Lite.
+    ///
+    /// Offers a
     #[inline]
     pub fn read_fifo(&mut self) -> nb::Result<u8, Infallible> {
-        let val = self.rx.read_fifo().unwrap();
+        let val = self.rx.read_fifo()?;
         if let Some(errors) = self.rx.errors {
             self.handle_status_reg_errors(errors);
         }
         Ok(val)
     }
 
+    /// Read from the FIFO without checking the FIFO fill status.
     #[inline(always)]
     pub fn read_fifo_unchecked(&mut self) -> u8 {
         self.rx.read_fifo_unchecked()
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// Is the TX FIFO empty?
     #[inline(always)]
-    pub fn tx_fifo_empty(&mut self) -> bool {
+    pub fn tx_fifo_empty(&self) -> bool {
         self.tx.fifo_empty()
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// TX FIFO full status.
     #[inline(always)]
-    pub fn tx_fifo_full(&mut self) -> bool {
+    pub fn tx_fifo_full(&self) -> bool {
         self.tx.fifo_full()
     }
 
-    // TODO: Make this non-mut as soon as pure reads are available
+    /// RX FIFO has data.
     #[inline(always)]
-    pub fn rx_has_data(&mut self) -> bool {
+    pub fn rx_has_data(&self) -> bool {
         self.rx.has_data()
     }
 
@@ -171,6 +185,7 @@ impl AxiUartlite {
         }
     }
 
+    /// Reset the RX FIFO.
     #[inline]
     pub fn reset_rx_fifo(&mut self) {
         self.regs().write_ctrl_reg(
@@ -182,6 +197,7 @@ impl AxiUartlite {
         );
     }
 
+    /// Reset the TX FIFO.
     #[inline]
     pub fn reset_tx_fifo(&mut self) {
         self.regs().write_ctrl_reg(
@@ -193,11 +209,13 @@ impl AxiUartlite {
         );
     }
 
+    /// Split the driver into [Tx] and [Rx] halves.
     #[inline]
     pub fn split(self) -> (Tx, Rx) {
         (self.tx, self.rx)
     }
 
+    /// Enable UART Lite interrupts.
     #[inline]
     pub fn enable_interrupt(&mut self) {
         self.regs().write_ctrl_reg(
@@ -209,6 +227,7 @@ impl AxiUartlite {
         );
     }
 
+    /// Disable UART Lite interrupts.
     #[inline]
     pub fn disable_interrupt(&mut self) {
         self.regs().write_ctrl_reg(

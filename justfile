@@ -1,9 +1,12 @@
-all: check build embedded clippy fmt docs coverage
+all: check build embedded clippy check-fmt docs
 
 clippy:
   cargo clippy -- -D warnings
 
 fmt:
+  cargo fmt --all
+
+check-fmt:
   cargo fmt --all -- --check
 
 check:
@@ -20,10 +23,10 @@ build:
   cargo build
 
 docs:
-  RUSTDOCFLAGS="--cfg docsrs -Z unstable-options --generate-link-to-definition" cargo +nightly doc
+  RUSTDOCFLAGS="--cfg docsrs -Z unstable-options --generate-link-to-definition" cargo +nightly doc --no-deps
 
 docs-html:
-  RUSTDOCFLAGS="--cfg docsrs -Z unstable-options --generate-link-to-definition" cargo +nightly doc --open
+  RUSTDOCFLAGS="--cfg docsrs -Z unstable-options --generate-link-to-definition" cargo +nightly doc --open --no-deps
 
 coverage:
   cargo llvm-cov nextest
