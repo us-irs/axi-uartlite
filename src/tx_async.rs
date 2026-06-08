@@ -15,11 +15,11 @@
 //! - `8-wakers`
 //! - `16-wakers`
 //! - `32-wakers`
-use core::{cell::RefCell, convert::Infallible, sync::atomic::AtomicBool};
+use core::{cell::RefCell, convert::Infallible, marker::PhantomData, sync::atomic::AtomicBool};
 
 use critical_section::Mutex;
 use embassy_sync::waitqueue::AtomicWaker;
-use raw_slice::RawBufSlice;
+use raw_buffer::RawBufSlice;
 
 use crate::{FIFO_DEPTH, Tx};
 
@@ -127,23 +127,19 @@ impl TxContext {
 }
 
 /// TX future structure.
-pub struct TxFuture<'tx> {
+pub struct TxFuture<'tx, 'buf> {
     waker_idx: usize,
     tx: &'tx mut TxAsync,
+    phantom: core::marker::PhantomData<&'buf ()>,
 }
 
-impl<'tx> TxFuture<'tx> {
+impl<'tx, 'buf> TxFuture<'tx, 'buf> {
     /// Create a new TX future which can be used for asynchronous TX operations.
-    ///
-    /// # Safety
-    ///
-    /// This function stores the raw pointer of the passed data slice. The user MUST ensure
-    /// that the slice outlives the data structure.
-    pub unsafe fn new(
+    pub fn new(
         tx: &'tx mut TxAsync,
         waker_idx: usize,
-        data: &[u8],
-    ) -> Result<TxFuture<'tx>, InvalidWakerIndex> {
+        data: &'buf [u8],
+    ) -> Result<Self, InvalidWakerIndex> {
         TX_DONE[waker_idx].store(false, core::sync::atomic::Ordering::Relaxed);
         tx.tx.reset_fifo();
 
@@ -160,11 +156,15 @@ impl<'tx> TxFuture<'tx> {
             }
             context.progress = init_fill_count;
         });
-        Ok(Self { waker_idx, tx })
+        Ok(Self {
+            waker_idx,
+            tx,
+            phantom: PhantomData,
+        })
     }
 }
 
-impl Future for TxFuture<'_> {
+impl Future for TxFuture<'_, '_> {
     type Output = usize;
 
     fn poll(
@@ -184,7 +184,7 @@ impl Future for TxFuture<'_> {
     }
 }
 
-impl Drop for TxFuture<'_> {
+impl Drop for TxFuture<'_, '_> {
     fn drop(&mut self) {
         if !TX_DONE[self.waker_idx].load(core::sync::atomic::Ordering::Relaxed) {
             critical_section::with(|cs| {
@@ -199,7 +199,7 @@ impl Drop for TxFuture<'_> {
     }
 }
 
-/// Asynchronous TX structure.
+/// Asynchronous TX driver.
 pub struct TxAsync {
     pub(crate) tx: Tx,
     waker_idx: usize,
@@ -207,7 +207,12 @@ pub struct TxAsync {
 
 impl TxAsync {
     /// Create a new asynchronous TX structure.
-    pub fn new(tx: Tx, waker_idx: usize) -> Result<Self, InvalidWakerIndex> {
+    ///
+    /// # Safety
+    ///
+    /// The user MUST ensure that the `Drop` method of all futures generated with this driver
+    /// is called on transfer cancellation. By default, this does not require any special handling.
+    pub unsafe fn new(tx: Tx, waker_idx: usize) -> Result<Self, InvalidWakerIndex> {
         if waker_idx >= NUM_WAKERS {
             return Err(InvalidWakerIndex(waker_idx));
         }
@@ -218,12 +223,8 @@ impl TxAsync {
     ///
     /// This implementation is not side effect free, and a started future might have already
     /// written part of the passed buffer.
-    pub async fn write(&mut self, buf: &[u8]) -> usize {
-        if buf.is_empty() {
-            return 0;
-        }
-        let fut = unsafe { TxFuture::new(self, self.waker_idx, buf).unwrap() };
-        fut.await
+    pub fn write<'buf>(&mut self, buf: &'buf [u8]) -> TxFuture<'_, 'buf> {
+        TxFuture::new(self, self.waker_idx, buf).expect("waker index unexpectedly invalid")
     }
 
     /// Release the owned TX structure.

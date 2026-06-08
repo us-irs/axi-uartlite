@@ -1,6 +1,12 @@
 //! # AXI UART Lite v2.0 driver
 //!
-//! This is a native Rust driver for the AMD AXI UART Lite v2.0 IP core.
+//! This is a native Rust driver for the
+//! [AMD AXI UART Lite v2.0 IP core](https://www.amd.com/en/products/adaptive-socs-and-fpgas/intellectual-property/axi_uartlite.html).
+//!
+//! # Special not on Zynq7000 usage
+//!
+//! When using this on the Zynq7000 platform, you might have to re-configure the interrupt sensitivity
+//! in the GIC. An example can be found [here](https://egit.irs.uni-stuttgart.de/rust/zynq7000-rs/src/commit/1ab64050974242e43a7c5a2df5fb09256bc06274/firmware/examples/zedboard/src/bin/uart-non-blocking.rs#L189).
 //!
 //! # Features
 //!
