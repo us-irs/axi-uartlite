@@ -2,7 +2,7 @@
 name = "axi-uartlite"
 version = "0.2.0"
 description = "LogiCORE AXI UART Lite v2.0 driver"
-rust-version = "1.85.1"
+rust-version = "1.87.0"
 edition = "2024"
 homepage = "https://egit.irs.uni-stuttgart.de/rust/axi-uartlite"
 repository = "https://egit.irs.uni-stuttgart.de/rust/axi-uartlite"
