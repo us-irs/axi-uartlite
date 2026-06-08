@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85.1
+      - uses: dtolnay/rust-toolchain@1.87.0
       - run: cargo build
 
   cross-check:
@@ -28,12 +28,12 @@ jobs:
       matrix:
         target:
           - armv7-unknown-linux-gnueabihf
-          - armv7a-none-eabi
+          - armv7a-none-eabihf
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: "armv7-unknown-linux-gnueabihf, armv7a-none-eabi"
+          targets: "armv7-unknown-linux-gnueabihf, armv7a-none-eabihf"
       - run: cargo build --target=${{matrix.target}}
 
   fmt:
